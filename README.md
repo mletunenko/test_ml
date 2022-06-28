@@ -60,7 +60,7 @@ D.
 
 Создание базы данных
 
-    sqlite3 SchoolDB.db
+    sqlite3 db_name.sqlite3
 
 Создание таблицы A
 
