@@ -22,8 +22,7 @@ def get_first_command_query(timestamp):
 
 
 def get_last_timestamp():
-    con = sql.connect(DB_NAME)
-    with con:
+    with sql.connect(DB_NAME) as con:
         cur = con.cursor()
         last_row_timestamp = cur.execute(LAST_ROW_TIMESTAMP_QUERY).fetchone()[0]
         first_command_query = get_first_command_query(last_row_timestamp)
@@ -32,17 +31,28 @@ def get_last_timestamp():
 
 
 def get_last_i_row():
-    con = sql.connect(DB_NAME)
-    with con:
+    with sql.connect(DB_NAME) as con:
         cur = con.cursor()
         last_i_row = cur.execute(LAST_I_ROW_QUERY).fetchone()
         return last_i_row
 
 
+def ask_user():
+    while True:
+        try:
+            command = int(input('Введите команду (1, 2, 9) -> '))
+        except ValueError:
+            print("Доступные команды: 1, 2 или 9")
+            continue
+        if command not in [1, 2, 9]:
+            print("Доступные команды: 1, 2 или 9")
+            continue
+        return command
+
+
 if __name__ == '__main__':
-    wait = True
-    while wait:
-        command = int(input('Введите команду -> '))
+    while True:
+        command = ask_user()
         if command == 1:
             last_timestamp = get_last_timestamp()
             for i in last_timestamp:
@@ -51,4 +61,4 @@ if __name__ == '__main__':
             last_i_row = get_last_i_row()
             print(last_i_row[0])
         elif command == 9:
-            wait = False
+            break

@@ -30,24 +30,51 @@ def prepare_data(data):
     return data
 
 
-def get_model_dict(y_train, y_test, model):
-    """Create dictionary to evaluate the quality of the model"""
-    MSE = mean_squared_error(y_train, y_test)
-    MAE = mean_absolute_error(y_train, y_test)
-    MAPE = mean_absolute_percentage_error(y_train, y_test)
-    max_err = max_error(y_train, y_test)
-    return {
-        'MSE': MSE,
-        'MAE': MAE,
-        'MAPE': MAPE,
-        'max_err': max_err,
-        'model': model
-    }
-
-
 def delete_model(dict):
     dict.pop('model')
     return dict
+
+
+def model_process(model, X_train, X_test, y_train, y_test):
+    """Train and estimate models, create dictionary to compare the quality of the model"""
+    model.fit(X_train, y_train)
+    y_model = model.predict(X_test)
+    return {
+        'MSE': mean_squared_error(y_test, y_model),
+        'MAE': mean_absolute_error(y_test, y_model),
+        'MAPE': mean_absolute_percentage_error(y_test, y_model),
+        'max_err': max_error(y_test, y_model),
+        'model': model,
+        'model_name': str(model.estimator)[:-2]
+    }
+
+
+def prepare_models(X_train, y_train, X_test, y_test):
+    """
+    Iterating through the hyperparameters, find the best model, train it, predict target values for test data-set,
+    compute the quality parameters of the model and append the parameters dictionary to the list.
+    Here we use KNeighborsRegressor, Ridge, DecisionTreeRegressor, RandomForestRegressor, ExtraTreesRegressor fuctions for
+    models training
+    """
+    models_info = []
+
+    cv_knn_regr = GridSearchCV(KNeighborsRegressor(), param_grid={'n_neighbors': range(1, 15),
+                                                                  'weights': ['uniform', 'distance'],
+                                                                  'p': range(1, 4)})
+    models_info.append(model_process(cv_knn_regr, X_train, y_train, X_test, y_test))
+    cv_ridge = GridSearchCV(Ridge(), param_grid={'alpha': np.linspace(0.1, 3, 10)})
+    models_info.append(model_process(cv_ridge, X_train, y_train, X_test, y_test))
+    cv_decision_tree = GridSearchCV(DecisionTreeRegressor(random_state=10), param_grid={'max_depth': range(1, 10, 1)})
+    models_info.append(model_process(cv_decision_tree, X_train, y_train, X_test, y_test))
+    cv_random_tree = GridSearchCV(RandomForestRegressor(), param_grid={'n_estimators': range(60, 100, 10),
+                                                                       'max_depth': range(50, 100, 10)})
+    models_info.append(model_process(cv_random_tree, X_train, y_train, X_test, y_test))
+    cv_extra_forest = GridSearchCV(ExtraTreesRegressor(), param_grid={'n_estimators': range(70, 90, 3),
+                                                                      'max_depth': range(50, 70, 3)})
+    models_info.append(model_process(cv_extra_forest, X_train, y_train, X_test, y_test))
+    # Find the best models by sorting them by the value of Mean absolute percentage error (MAPE)
+    models_info.sort(key=lambda x: x['MAPE'])
+    return models_info
 
 
 if __name__ == '__main__':
@@ -60,51 +87,13 @@ if __name__ == '__main__':
     y = data[:, -1]
     # Divide variables and target values into a training and test sample
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=10)
-    models_info = []
-    # Iterating through the hyperparameters, find the best model, train it, predict target values for test data-set,
-    # compute the quality parameters of the model and append the parameters dictionary to the list.
-    # Here we use KNeighborsRegressor, Ridge, DecisionTreeRegressor, RandomForestRegressor, ExtraTreesRegressor fuctions for
-    # models training
-    cv_knn_regr = GridSearchCV(KNeighborsRegressor(), param_grid={'n_neighbors': range(1, 15),
-                                                                  'weights': ['uniform', 'distance'],
-                                                                  'p': range(1, 4)})
-    cv_knn_regr.fit(X_train, y_train)
-    y_knn_regr = cv_knn_regr.predict(X_test)
-    dict_knn_regr = get_model_dict(y_test, y_knn_regr, cv_knn_regr)
-    models_info.append(dict_knn_regr)
 
-    cv_ridge = GridSearchCV(Ridge(), param_grid={'alpha': np.linspace(0.1, 3, 10)})
-    cv_ridge.fit(X_train, y_train)
-    y_ridge = cv_ridge.predict(X_test)
-    dict_ridge = get_model_dict(y_test, y_ridge, cv_ridge)
-    models_info.append(dict_ridge)
+    models_info = prepare_models(X_train, X_test, y_train, y_test)
 
-    cv_decision_tree = GridSearchCV(DecisionTreeRegressor(random_state=10), param_grid={'max_depth': range(1, 10, 1)})
-    cv_decision_tree.fit(X_train, y_train)
-    y_decision_tree = cv_decision_tree.predict(X_test)
-    dict_decision_tree = get_model_dict(y_test, y_decision_tree, cv_decision_tree)
-    models_info.append(dict_decision_tree)
-
-    cv_random_tree = GridSearchCV(RandomForestRegressor(), param_grid={'n_estimators': range(60, 100, 10),
-                                                                       'max_depth': range(50, 100, 10)})
-    cv_random_tree.fit(X_train, y_train)
-    y_random_tree = cv_random_tree.predict(X_test)
-    dict_random_tree = get_model_dict(y_test, y_random_tree, cv_random_tree)
-    models_info.append(dict_random_tree)
-
-    cv_extra_forest = GridSearchCV(ExtraTreesRegressor(), param_grid={'n_estimators': range(70, 90, 3),
-                                                                      'max_depth': range(50, 70, 3)})
-    cv_extra_forest.fit(X_train, y_train)
-    y_extra_forest = cv_extra_forest.predict(X_test)
-    dict_extra_forest = get_model_dict(y_test, y_extra_forest, cv_extra_forest)
-    models_info.append(dict_extra_forest)
-    # Find the best models by sorting them by the value of Mean absolute percentage error (MAPE)
-    models_info.sort(key=lambda x: x['MAPE'])
-    # Use three best models to predict target values of the entire date set and save model in .plk format
+    # Predict target value for the entire dataset, write new data to the DateFrame, save model object in .plk format
     for i in range(0, 3):
-        raw_data[f'model{i + 1}'] = models_info[i]['model'].predict(X)
+        raw_data[models_info[i]['model_name']] = models_info[i]['model'].predict(X)
         joblib.dump(models_info[i]['model'], f"{str(models_info[i]['model'].estimator)[:-2]}.plk")
-
     raw_data.to_excel('test_result.xlsx')
     models_info = list(map(delete_model, models_info))
 
