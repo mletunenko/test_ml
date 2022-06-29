@@ -1,7 +1,8 @@
 import sqlite3 as sql
 from datetime import datetime
 import time
-from config import DB_NAME
+import configparser
+
 
 create_table_a = """
 CREATE TABLE IF NOT EXISTS "a" (
@@ -25,8 +26,8 @@ CREATE TABLE IF NOT EXISTS "bd" (
 );"""
 
 
-def create_tables():
-    con = sql.connect(DB_NAME)
+def create_tables(db_name):
+    con = sql.connect(db_name)
     cur = con.cursor()
     cur.execute(create_table_a)
     cur.execute(create_table_i)
@@ -34,8 +35,8 @@ def create_tables():
     con.commit()
     con.close()
 
-def export_to_sqlite_a(raw_data):
-    con = sql.connect(DB_NAME)
+def export_to_sqlite_a(db_name, raw_data):
+    con = sql.connect(db_name)
     cur = con.cursor()
     a = list(raw_data['A'])
     a = list(map(lambda x: (x,), a))
@@ -44,8 +45,8 @@ def export_to_sqlite_a(raw_data):
     con.close()
 
 
-def export_to_sqlite_i(raw_data):
-    con = sql.connect(DB_NAME)
+def export_to_sqlite_i(db_name, raw_data):
+    con = sql.connect(db_name)
     cur = con.cursor()
     a = list(raw_data['I'])
     a = list(map(lambda x: (f'//{x}/{x}/{x}', f'{x}+{x}'), a))
@@ -53,8 +54,8 @@ def export_to_sqlite_i(raw_data):
     con.commit()
     con.close()
 
-def export_to_sqlite_bd(raw_data):
-    con = sql.connect(DB_NAME)
+def export_to_sqlite_bd(db_name, raw_data):
+    con = sql.connect(db_name)
     cur = con.cursor()
     b = list(raw_data['B'])
     d = list(raw_data['D'])
@@ -65,10 +66,16 @@ def export_to_sqlite_bd(raw_data):
 
     con.commit()
     con.close()
+def read_congig_db_name():
+    config = configparser.ConfigParser()
+    config.read("config.ini")
+    return config['Database']['db_name']
+
 
 def proccess_data(raw_data):
-    create_tables()
-    export_to_sqlite_a(raw_data)
-    export_to_sqlite_i(raw_data)
-    export_to_sqlite_bd(raw_data)
+    db_name = read_congig_db_name()
+    create_tables(db_name)
+    export_to_sqlite_a(db_name, raw_data)
+    export_to_sqlite_i(db_name, raw_data)
+    export_to_sqlite_bd(db_name, raw_data)
 
