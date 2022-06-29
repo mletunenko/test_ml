@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import joblib
 
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.linear_model import Ridge
@@ -87,6 +89,13 @@ if __name__ == '__main__':
     except FileNotFoundError:
         print(f'Файл {file} не найден в директории проекта')
         exit(1)
+    plt.figure(figsize=(20, 7))
+    # Create a heatmap of correlation dependent variable and target value
+    sns.heatmap(raw_data.corr(), annot=True, fmt='.1g', vmin=-1, vmax=1, center=0, cmap='coolwarm',
+                cbar_kws={'orientation': 'horizontal',
+                          'shrink': 0.75})
+    # Save heatmap plot in .png format
+    plt.savefig('Корреляция зависимых параметров с целевой функцией.png')
     # Use only 180-279, 370-469, 1000-1099, 1540-1639 raws from dataset for input data
     raw_data = pd.concat([raw_data[180:280], raw_data[370:470], raw_data[1000:1100], raw_data[1540:1640]])
     # Prepare data for correct processing of categorical value
