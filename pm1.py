@@ -48,7 +48,8 @@ def model_process(model, X_train, X_test, y_train, y_test):
         'MAPE': mean_absolute_percentage_error(y_test, y_model),
         'max_err': max_error(y_test, y_model),
         'model': model,
-        'model_name': str(model.estimator)[:-2]
+        'model_name': str(model.estimator)[:-2],
+        'score': model.score(X_test, y_test)
     }
 
 
@@ -62,10 +63,10 @@ def prepare_models(X_train, y_train, X_test, y_test):
     # Create empty list to store dicts with information about models
     models_info = []
 
-    cv_knn_regr = GridSearchCV(KNeighborsRegressor(), param_grid={'n_neighbors': range(1, 15),
-                                                                  'weights': ['uniform', 'distance'],
-                                                                  'p': range(1, 4)})
-    models_info.append(model_process(cv_knn_regr, X_train, y_train, X_test, y_test))
+    # cv_knn_regr = GridSearchCV(KNeighborsRegressor(), param_grid={'n_neighbors': range(1, 15),
+    #                                                               'weights': ['uniform', 'distance'],
+    #                                                               'p': range(1, 4)})
+    # models_info.append(model_process(cv_knn_regr, X_train, y_train, X_test, y_test))
     cv_ridge = GridSearchCV(Ridge(), param_grid={'alpha': np.linspace(0.1, 3, 10)})
     models_info.append(model_process(cv_ridge, X_train, y_train, X_test, y_test))
     cv_decision_tree = GridSearchCV(DecisionTreeRegressor(random_state=10), param_grid={'max_depth': range(1, 10, 1)})
@@ -76,8 +77,8 @@ def prepare_models(X_train, y_train, X_test, y_test):
     cv_extra_forest = GridSearchCV(ExtraTreesRegressor(), param_grid={'n_estimators': range(70, 90, 3),
                                                                       'max_depth': range(50, 70, 3)})
     models_info.append(model_process(cv_extra_forest, X_train, y_train, X_test, y_test))
-    # Find the best models by sorting them by the value of Mean absolute percentage error (MAPE)
-    models_info.sort(key=lambda x: x['MAPE'])
+    # Find the best models by sorting them by the value of score
+    models_info.sort(key=lambda x: x['score'])
     return models_info
 
 
@@ -91,7 +92,7 @@ if __name__ == '__main__':
         exit(1)
     plt.figure(figsize=(20, 7))
     # Create a heatmap of correlation dependent variable and target value
-    sns.heatmap(raw_data.corr(), annot=True, fmt='.1g', vmin=-1, vmax=1, center=0, cmap='coolwarm',
+    sns.heatmap(raw_data.corr(), annot=True, fmt='.2g', vmin=-1, vmax=1, center=0, cmap='coolwarm',
                 cbar_kws={'orientation': 'horizontal',
                           'shrink': 0.75})
     # Save heatmap plot in .png format
