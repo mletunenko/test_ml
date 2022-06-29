@@ -1,7 +1,7 @@
 import json
-
 import numpy as np
 import pandas as pd
+import joblib
 
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
@@ -12,12 +12,12 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 
-import joblib
 
 from data_proccess import proccess_data
 
 
 def get_data(file_name):
+    """Read original data set from .xlsx file"""
     df = pd.read_excel(file_name)
     return df
 
@@ -31,6 +31,7 @@ def prepare_data(data):
 
 
 def delete_model(dict):
+    """Delete model object from dictionary"""
     dict.pop('model')
     return dict
 
@@ -56,6 +57,7 @@ def prepare_models(X_train, y_train, X_test, y_test):
     Here we use KNeighborsRegressor, Ridge, DecisionTreeRegressor, RandomForestRegressor, ExtraTreesRegressor fuctions for
     models training
     """
+    # Create empty list to store dicts with information about models
     models_info = []
 
     cv_knn_regr = GridSearchCV(KNeighborsRegressor(), param_grid={'n_neighbors': range(1, 15),
@@ -79,24 +81,32 @@ def prepare_models(X_train, y_train, X_test, y_test):
 
 if __name__ == '__main__':
     file = 'data.xlsx'
-    raw_data = get_data(file)
+    # Try to open dataset file or stop execution of program
+    try:
+        raw_data = get_data(file)
+    except FileNotFoundError:
+        print(f'Файл {file} не найден в директории проекта')
+        exit(1)
+    # Use only 180-279, 370-469, 1000-1099, 1540-1639 raws from dataset for input data
     raw_data = pd.concat([raw_data[180:280], raw_data[370:470], raw_data[1000:1100], raw_data[1540:1640]])
+    # Prepare data for correct processing of categorical value
     data = prepare_data(raw_data)
     # Separating variables from the target values
     X = data[:, :-1]
     y = data[:, -1]
     # Divide variables and target values into a training and test sample
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=10)
-
+    # Train models and create sorted list of dictionaries with models parameters
     models_info = prepare_models(X_train, X_test, y_train, y_test)
-
     # Predict target value for the entire dataset, write new data to the DateFrame, save model object in .plk format
     for i in range(0, 3):
         raw_data[models_info[i]['model_name']] = models_info[i]['model'].predict(X)
         joblib.dump(models_info[i]['model'], f"{str(models_info[i]['model'].estimator)[:-2]}.plk")
+    # Save new dataset with predicted target values
     raw_data.to_excel('test_result.xlsx')
+    # Delete model object from dictionaries
     models_info = list(map(delete_model, models_info))
-
+    # Write file with parameters of the models
     with open('models.json', 'w') as file:
         json.dump(models_info, file)
     # Write new data in database

@@ -73,9 +73,14 @@ def read_congig_db_name():
 
 
 def proccess_data(raw_data):
+    # Read database name from congig file
     db_name = read_congig_db_name()
+    # Create tables a, i, bd in database if they don't exist
     create_tables(db_name)
+    # Fill the a table in database
     export_to_sqlite_a(db_name, raw_data)
+    # Fill the i table in database
     export_to_sqlite_i(db_name, raw_data)
+    # Fill the bd table in database
     export_to_sqlite_bd(db_name, raw_data)
 
