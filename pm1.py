@@ -5,13 +5,11 @@ import joblib
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error, mean_absolute_error, max_error
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 
 
@@ -23,13 +21,18 @@ def get_data(file_name):
     df = pd.read_excel(file_name)
     return df
 
+def scale_dataset(data):
+    """Scale to unit variance"""
+    scaler = StandardScaler()
+    scaler.fit(data.iloc[:, :-2])
+    return scaler.transform(data.iloc[:, :-2])
 
 def prepare_data(data):
     """Transform categorical value 'I' into three boolean values"""
     data['I'] = pd.Categorical(data['I'])
     ohe = ColumnTransformer([("One hot", OneHotEncoder(sparse=False), [8])], remainder="passthrough")
     data = ohe.fit_transform(data)
-    return data
+    return data[:, :3]
 
 
 def delete_model(dict):
@@ -63,14 +66,8 @@ def prepare_models(X_train, y_train, X_test, y_test):
     # Create empty list to store dicts with information about models
     models_info = []
 
-    # cv_knn_regr = GridSearchCV(KNeighborsRegressor(), param_grid={'n_neighbors': range(1, 15),
-    #                                                               'weights': ['uniform', 'distance'],
-    #                                                               'p': range(1, 4)})
-    # models_info.append(model_process(cv_knn_regr, X_train, y_train, X_test, y_test))
     cv_ridge = GridSearchCV(Ridge(), param_grid={'alpha': np.linspace(0.1, 3, 10)})
     models_info.append(model_process(cv_ridge, X_train, y_train, X_test, y_test))
-    cv_decision_tree = GridSearchCV(DecisionTreeRegressor(random_state=10), param_grid={'max_depth': range(1, 10, 1)})
-    models_info.append(model_process(cv_decision_tree, X_train, y_train, X_test, y_test))
     cv_random_tree = GridSearchCV(RandomForestRegressor(), param_grid={'n_estimators': range(60, 100, 10),
                                                                        'max_depth': range(50, 100, 10)})
     models_info.append(model_process(cv_random_tree, X_train, y_train, X_test, y_test))
@@ -80,6 +77,7 @@ def prepare_models(X_train, y_train, X_test, y_test):
     # Find the best models by sorting them by the value of score
     models_info.sort(key=lambda x: x['score'])
     return models_info
+
 
 
 if __name__ == '__main__':
@@ -99,8 +97,15 @@ if __name__ == '__main__':
     plt.savefig('Корреляция зависимых параметров с целевой функцией.png')
     # Use only 180-279, 370-469, 1000-1099, 1540-1639 raws from dataset for input data
     raw_data = pd.concat([raw_data[180:280], raw_data[370:470], raw_data[1000:1100], raw_data[1540:1640]])
+    scaled_data = scale_dataset(raw_data)
     # Prepare data for correct processing of categorical value
-    data = prepare_data(raw_data)
+    categorical_data = prepare_data(raw_data)
+    # Get numpy array from the DataFrame
+    grade = raw_data['grade'].to_numpy()
+    # Reshape ndarray for concatenation
+    grade.shape = (400, 1)
+    # Concatenate sets with categorical data, scaled data and target value
+    data = np.concatenate([categorical_data, scaled_data, grade], axis=1)
     # Separating variables from the target values
     X = data[:, :-1]
     y = data[:, -1]
