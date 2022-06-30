@@ -5,13 +5,11 @@ import joblib
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
-from sklearn.linear_model import Ridge
+from sklearn import linear_model
 from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error, mean_absolute_error, max_error
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
-
 
 from data_proccess import proccess_data
 
@@ -21,11 +19,13 @@ def get_data(file_name):
     df = pd.read_excel(file_name)
     return df
 
+
 def scale_dataset(data):
     """Scale to unit variance"""
     scaler = StandardScaler()
     scaler.fit(data.iloc[:, :-2])
     return scaler.transform(data.iloc[:, :-2])
+
 
 def prepare_data(data):
     """Transform categorical value 'I' into three boolean values"""
@@ -51,33 +51,31 @@ def model_process(model, X_train, X_test, y_train, y_test):
         'MAPE': mean_absolute_percentage_error(y_test, y_model),
         'max_err': max_error(y_test, y_model),
         'model': model,
-        'model_name': str(model.estimator)[:-2],
+        'model_name': str(model)[:-2],
         'score': model.score(X_test, y_test)
     }
 
 
 def prepare_models(X_train, y_train, X_test, y_test):
     """
-    Iterating through the hyperparameters, find the best model, train it, predict target values for test data-set,
-    compute the quality parameters of the model and append the parameters dictionary to the list.
-    Here we use KNeighborsRegressor, Ridge, DecisionTreeRegressor, RandomForestRegressor, ExtraTreesRegressor fuctions for
-    models training
+    Train models, predict target values for test data-set, compute the quality parameters of the model
+    and append the parameters dictionary to the list.
+    Here we use LinearRegression, Ridge, SGDRegressor, BayesianRidge fuctions for models training
     """
     # Create empty list to store dicts with information about models
     models_info = []
-
-    cv_ridge = GridSearchCV(Ridge(), param_grid={'alpha': np.linspace(0.1, 3, 10)})
-    models_info.append(model_process(cv_ridge, X_train, y_train, X_test, y_test))
-    cv_random_tree = GridSearchCV(RandomForestRegressor(), param_grid={'n_estimators': range(60, 100, 10),
-                                                                       'max_depth': range(50, 100, 10)})
-    models_info.append(model_process(cv_random_tree, X_train, y_train, X_test, y_test))
-    cv_extra_forest = GridSearchCV(ExtraTreesRegressor(), param_grid={'n_estimators': range(70, 90, 3),
-                                                                      'max_depth': range(50, 70, 3)})
-    models_info.append(model_process(cv_extra_forest, X_train, y_train, X_test, y_test))
+    # Create, train and estimate linear regression models
+    reg = linear_model.LinearRegression()
+    models_info.append(model_process(reg, X_train, y_train, X_test, y_test))
+    ridge = linear_model.Ridge()
+    models_info.append(model_process(ridge, X_train, y_train, X_test, y_test))
+    sgd = linear_model.SGDRegressor()
+    models_info.append(model_process(sgd, X_train, y_train, X_test, y_test))
+    bayes = linear_model.BayesianRidge()
+    models_info.append(model_process(bayes, X_train, y_train, X_test, y_test))
     # Find the best models by sorting them by the value of score
-    models_info.sort(key=lambda x: x['score'])
+    models_info.sort(key=lambda x: - x['score'])
     return models_info
-
 
 
 if __name__ == '__main__':
@@ -116,7 +114,7 @@ if __name__ == '__main__':
     # Predict target value for the entire dataset, write new data to the DateFrame, save model object in .plk format
     for i in range(0, 3):
         raw_data[models_info[i]['model_name']] = models_info[i]['model'].predict(X)
-        joblib.dump(models_info[i]['model'], f"{str(models_info[i]['model'].estimator)[:-2]}.plk")
+        joblib.dump(models_info[i]['model'], f"{str(models_info[i]['model'])[:-2]}.plk")
     # Save new dataset with predicted target values
     raw_data.to_excel('test_result.xlsx')
     # Delete model object from dictionaries
